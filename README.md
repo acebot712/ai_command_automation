@@ -13,6 +13,9 @@ The **Natural Language Automation System** is a tool that allows users to execut
 - **Environmental Awareness:** Recognizes UI elements on the screen for accurate interactions.
 - **Error Handling:** Provides robust error handling and logging.
 
+![mermaid-diagram-2024-10-25-140621](https://github.com/user-attachments/assets/c2262934-2d16-4e87-be1e-ea16c0615065)
+
+
 ## Project Structure
 
 ```
