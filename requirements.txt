@@ -2,3 +2,5 @@ requests
 pyautogui
 opencv-python
 pytesseract
+pytest
+streamlit

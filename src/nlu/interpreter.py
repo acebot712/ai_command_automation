@@ -1,9 +1,11 @@
 import requests
 import json
 from ..config import LLAMA_API_URL, LLAMA_MODEL_NAME
+from src.plugins import LLMPlugin, plugin_registry
+from typing import Any, Dict, List, Optional
 
 
-def llama3(messages):
+def llama3(messages: List[Dict[str, Any]]) -> Optional[str]:
     """
     Sends a prompt with separated roles to the Llama 3 API and returns the response text.
     """
@@ -27,7 +29,7 @@ def llama3(messages):
         return None
 
 
-def create_initial_prompt(user_command):
+def create_initial_prompt(user_command: str) -> List[Dict[str, Any]]:
     """
     Creates a list of messages for the user's command with separated system and user roles.
     """
@@ -72,7 +74,7 @@ Response:
     return messages
 
 
-def create_decomposition_prompt(task_description):
+def create_decomposition_prompt(task_description: str) -> List[Dict[str, Any]]:
     """
     Creates a list of messages for decomposing a task into atomic actions.
     """
@@ -114,56 +116,62 @@ Task: {task_description}
     return messages
 
 
-def interpret_command(user_command):
-    """
-    Interprets the user's command and returns the intent and decomposition flag.
-    """
-    messages = create_initial_prompt(user_command)
-    response_text = llama3(messages)
-    if response_text:
-        try:
-            parsed_response = json.loads(response_text)
-            return parsed_response
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON response: {e}")
-            print(f"Response Text:\n{response_text}")
-            return None
-    else:
-        return None
-
-
-def decompose_task(task_description):
-    """
-    Decomposes a complex task into atomic actions.
-    """
-    messages = create_decomposition_prompt(task_description)
-    response_text = llama3(messages)
-    if response_text:
-        # Remove any leading/trailing whitespace
-        response_text = response_text.strip()
-        try:
-            # Attempt to parse the response directly
-            actions = json.loads(response_text)
-            return actions
-        except json.JSONDecodeError:
-            # If parsing fails, try to extract the JSON array from the response
-            json_start = response_text.find("[")
-            json_end = response_text.rfind("]")
-            if json_start != -1 and json_end != -1 and json_start < json_end:
-                json_str = response_text[json_start : json_end + 1]
-                try:
-                    actions = json.loads(json_str)
-                    return actions
-                except json.JSONDecodeError as e:
-                    print(f"Error parsing extracted JSON: {e}")
-                    print(f"Extracted JSON Text:\n{json_str}")
-                    return None
-            else:
-                print("Could not find JSON array in the response.")
+class DefaultLLMPlugin(LLMPlugin):
+    def interpret_command(self, user_command: str) -> Optional[Dict[str, Any]]:
+        messages = create_initial_prompt(user_command)
+        response_text = llama3(messages)
+        if response_text:
+            try:
+                parsed_response = json.loads(response_text)
+                return parsed_response
+            except json.JSONDecodeError as e:
+                print(f"Error parsing JSON response: {e}")
                 print(f"Response Text:\n{response_text}")
                 return None
-    else:
-        return None
+        else:
+            return None
+
+    def decompose_task(self, task_description: str) -> Optional[List[Dict[str, Any]]]:
+        messages = create_decomposition_prompt(task_description)
+        response_text = llama3(messages)
+        if response_text:
+            response_text = response_text.strip()
+            try:
+                actions = json.loads(response_text)
+                return actions
+            except json.JSONDecodeError:
+                json_start = response_text.find("[")
+                json_end = response_text.rfind("]")
+                if json_start != -1 and json_end != -1 and json_start < json_end:
+                    json_str = response_text[json_start : json_end + 1]
+                    try:
+                        actions = json.loads(json_str)
+                        return actions
+                    except json.JSONDecodeError as e:
+                        print(f"Error parsing extracted JSON: {e}")
+                        print(f"Extracted JSON Text:\n{json_str}")
+                        return None
+                else:
+                    print("Could not find JSON array in the response.")
+                    print(f"Response Text:\n{response_text}")
+                    return None
+        else:
+            return None
+
+
+# Register the default LLM plugin
+default_llm_plugin = DefaultLLMPlugin()
+plugin_registry.register_llm_plugin(default_llm_plugin)
+
+
+def interpret_command(user_command: str) -> Optional[Dict[str, Any]]:
+    plugin = plugin_registry.get_llm_plugin()
+    return plugin.interpret_command(user_command)
+
+
+def decompose_task(task_description: str) -> Optional[List[Dict[str, Any]]]:
+    plugin = plugin_registry.get_llm_plugin()
+    return plugin.decompose_task(task_description)
 
 
 def parse_actions_from_response(response_text):

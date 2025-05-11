@@ -61,8 +61,8 @@ natural_language_automation/
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/yourusername/natural_language_automation.git
-   cd natural_language_automation
+   git clone https://github.com/acebot712/ai_command_automation.git
+   cd ai_command_automation
    ```
 
 2. **Create a Virtual Environment (Optional but Recommended)**
